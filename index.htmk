@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPN Telegram Mini App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-slow 3s linear infinite;
+        }
+        body {
+            background-color: #0a0a0c;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .active-tab {
+            color: #3b82f6;
+        }
+        .server-card.active {
+            background-color: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="text-white font-sans pb-24">
+
+    <!-- Header -->
+    <header class="p-6 flex justify-between items-center sticky top-0 z-50 bg-[#0a0a0c]/80 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.3)]">
+                <i data-lucide="shield" class="text-blue-400 w-5 h-5"></i>
+            </div>
+            <div>
+                <h1 class="text-sm font-medium text-gray-400">Telegram VPN</h1>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
+                    <p class="text-xs text-blue-400 font-bold uppercase tracking-wider">Premium Plan</p>
+                </div>
+            </div>
+        </div>
+        <button class="p-2 rounded-xl bg-[#1a1a1e] border border-white/5 active:scale-95 transition-transform">
+            <i data-lucide="settings" class="text-gray-400 w-5 h-5"></i>
+        </button>
+    </header>
+
+    <!-- Main Screen -->
+    <main id="home-screen" class="px-6">
+        <div class="flex flex-col items-center justify-center py-6">
+            <div id="connect-btn" class="relative cursor-pointer group">
+                <!-- Ping Animation -->
+                <div id="ping-effect" class="hidden absolute inset-0 rounded-full animate-ping opacity-20 bg-blue-500"></div>
+                
+                <div id="btn-ring" class="relative z-10 w-52 h-52 rounded-full border-[6px] border-[#2a2a30] bg-[#1a1a1e] transition-all duration-500 flex flex-col items-center justify-center shadow-2xl">
+                    <div id="icon-container">
+                        <i id="lock-icon" data-lucide="lock" class="text-gray-500 w-16 h-16 mb-2 transition-colors"></i>
+                    </div>
+                    <span id="status-text" class="text-sm font-bold uppercase tracking-widest text-gray-500">СТАРТ</span>
+                    <span id="timer-text" class="hidden text-2xl font-mono font-bold text-white">00:00</span>
+                </div>
+            </div>
+
+            <div class="mt-8 text-center space-y-1">
+                <p class="text-gray-500 text-xs uppercase tracking-wide">Ваш публичный IP</p>
+                <div class="flex items-center justify-center gap-2">
+                    <i data-lucide="globe" class="text-gray-500 w-4 h-4" id="ip-icon"></i>
+                    <p id="current-ip" class="text-xl font-mono font-medium text-white transition-colors">95.161.223.102</p>
+                </div>
+                <p id="location-text" class="text-xs text-gray-600">Не защищено</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <div class="bg-[#15151a] p-4 rounded-2xl border border-white/5 relative overflow-hidden">
+                <div class="flex items-center gap-2 mb-2 text-gray-500">
+                    <span class="text-xs font-semibold uppercase">Скачано</span>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <span id="stat-down" class="text-2xl font-bold text-white">0.0</span>
+                    <span class="text-xs text-gray-500">MB</span>
+                </div>
+            </div>
+            <div class="bg-[#15151a] p-4 rounded-2xl border border-white/5 relative overflow-hidden">
+                <div class="flex items-center gap-2 mb-2 text-gray-500">
+                    <span class="text-xs font-semibold uppercase">Загружено</span>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <span id="stat-up" class="text-2xl font-bold text-white">0.0</span>
+                    <span class="text-xs text-gray-500">MB</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Server Selector Brief -->
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-widest">Локация</h2>
+            <button onclick="switchTab('servers')" class="text-xs text-blue-400 font-medium">Выбрать</button>
+        </div>
+        <div id="selected-server-card" class="bg-blue-600/10 border border-blue-500/50 p-4 rounded-2xl flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span id="current-flag" class="text-3xl">🇳🇱</span>
+                <div>
+                    <p id="current-country" class="text-sm font-bold">Нидерланды</p>
+                    <p id="current-city" class="text-xs text-gray-500">Амстердам</p>
+                </div>
+            </div>
+            <i data-lucide="chevron-right" class="text-blue-500"></i>
+        </div>
+    </main>
+
+    <!-- Servers Screen (Hidden by default) -->
+    <main id="servers-screen" class="hidden px-6 animate-fade-in">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">Доступные локации</h2>
+        <div id="servers-list" class="space-y-3">
+            <!-- Servers will be injected here -->
+        </div>
+    </main>
+
+    <!-- Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#0a0a0c]/80 backdrop-blur-xl border-t border-white/5 px-8 py-4 flex justify-between items-center z-50">
+        <button onclick="switchTab('home')" id="tab-home" class="active-tab flex flex-col items-center gap-1">
+            <i data-lucide="layout-dashboard"></i>
+            <span class="text-[10px] font-medium">Главная</span>
+        </button>
+        <button onclick="switchTab('servers')" id="tab-servers" class="text-gray-600 flex flex-col items-center gap-1">
+            <i data-lucide="globe"></i>
+            <span class="text-[10px] font-medium">Сервера</span>
+        </button>
+        <button class="text-gray-600 flex flex-col items-center gap-1">
+            <i data-lucide="clock"></i>
+            <span class="text-[10px] font-medium">История</span>
+        </button>
+    </nav>
+
+    <script>
+        // Инициализация иконок
+        lucide.createIcons();
+
+        // Данные
+        const servers = [
+            { id: 1, country: 'Нидерланды', city: 'Амстердам', flag: '🇳🇱', ip: '185.242.115.34', lat: 34 },
+            { id: 2, country: 'Германия', city: 'Франкфурт', flag: '🇩🇪', ip: '45.12.221.90', lat: 42 },
+            { id: 3, country: 'США', city: 'Нью-Йорк', flag: '🇺🇸', ip: '104.21.55.2', lat: 120 },
+            { id: 4, country: 'Турция', city: 'Стамбул', flag: '🇹🇷', ip: '88.255.212.11', lat: 55 }
+        ];
+
+        let isConnected = false;
+        let isConnecting = false;
+        let selectedServer = servers[0];
+        let sessionSeconds = 0;
+        let trafficUp = 0;
+        let trafficDown = 0;
+        let timerInterval;
+
+        const realIp = "95.161.223.102";
+
+        // Элементы
+        const connectBtn = document.getElementById('connect-btn');
+        const statusText = document.getElementById('status-text');
+        const timerText = document.getElementById('timer-text');
+        const btnRing = document.getElementById('btn-ring');
+        const lockIcon = document.getElementById('lock-icon');
+        const pingEffect = document.getElementById('ping-effect');
+        const currentIpDisplay = document.getElementById('current-ip');
+        const locationText = document.getElementById('location-text');
+        const ipIcon = document.getElementById('ip-icon');
+
+        // Переключение вкладок
+        function switchTab(tab) {
+            document.getElementById('home-screen').classList.toggle('hidden', tab !== 'home');
+            document.getElementById('servers-screen').classList.toggle('hidden', tab !== 'servers');
+            document.getElementById('tab-home').classList.toggle('active-tab', tab === 'home');
+            document.getElementById('tab-servers').classList.toggle('active-tab', tab === 'servers');
+            document.getElementById('tab-home').classList.toggle('text-gray-600', tab !== 'home');
+            document.getElementById('tab-servers').classList.toggle('text-gray-600', tab !== 'servers');
+        }
+
+        // Рендер списка серверов
+        function renderServers() {
+            const list = document.getElementById('servers-list');
+            list.innerHTML = servers.map(s => `
+                <div onclick="selectServer(${s.id})" class="server-card ${selectedServer.id === s.id ? 'active' : ''} bg-[#15151a] border border-white/5 p-4 rounded-2xl flex items-center justify-between cursor-pointer active:scale-95 transition-all">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">${s.flag}</span>
+                        <div>
+                            <p class="text-sm font-bold text-white">${s.country}</p>
+                            <p class="text-xs text-gray-500">${s.city}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-mono text-gray-500">${s.lat}ms</span>
+                        <div class="w-2 h-2 rounded-full ${selectedServer.id === s.id ? 'bg-blue-500' : 'bg-gray-700'}"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectServer(id) {
+            selectedServer = servers.find(s => s.id === id);
+            document.getElementById('current-flag').innerText = selectedServer.flag;
+            document.getElementById('current-country').innerText = selectedServer.country;
+            document.getElementById('current-city').innerText = selectedServer.city;
+            
+            if (isConnected) {
+                stopVpn();
+                setTimeout(startVpn, 500);
+            }
+            renderServers();
+            switchTab('home');
+        }
+
+        function startVpn() {
+            if (isConnecting) return;
+            isConnecting = true;
+            statusText.innerText = "СВЯЗЬ...";
+            lockIcon.classList.add('animate-spin-slow');
+            lockIcon.classList.replace('text-gray-500', 'text-blue-500');
+            btnRing.classList.add('border-blue-500/50', 'shadow-blue-500/20');
+            pingEffect.classList.remove('hidden');
+
+            setTimeout(() => {
+                isConnecting = false;
+                isConnected = true;
+                statusText.classList.add('hidden');
+                timerText.classList.remove('hidden');
+                lockIcon.classList.remove('animate-spin-slow');
+                lockIcon.innerHTML = '<i data-lucide="shield-check" class="text-green-500 w-16 h-16 mb-2"></i>';
+                btnRing.classList.replace('border-blue-500/50', 'border-green-500/50');
+                pingEffect.classList.replace('bg-blue-500', 'bg-green-500');
+                
+                currentIpDisplay.innerText = selectedServer.ip;
+                currentIpDisplay.classList.replace('text-white', 'text-green-400');
+                locationText.innerText = `Защищено через ${selectedServer.city}`;
+                ipIcon.classList.replace('text-gray-500', 'text-green-500');
+
+                lucide.createIcons(); // Обновить иконку щита
+
+                timerInterval = setInterval(() => {
+                    sessionSeconds++;
+                    const m = Math.floor(sessionSeconds / 60).toString().padStart(2, '0');
+                    const s = (sessionSeconds % 60).toString().padStart(2, '0');
+                    timerText.innerText = `${m}:${s}`;
+                    
+                    trafficUp += Math.random() * 0.2;
+                    trafficDown += Math.random() * 1.5;
+                    document.getElementById('stat-up').innerText = trafficUp.toFixed(1);
+                    document.getElementById('stat-down').innerText = trafficDown.toFixed(1);
+                }, 1000);
+            }, 1500);
+        }
+
+        function stopVpn() {
+            isConnected = false;
+            clearInterval(timerInterval);
+            sessionSeconds = 0;
+            trafficUp = 0;
+            trafficDown = 0;
+            
+            statusText.innerText = "СТАРТ";
+            statusText.classList.remove('hidden');
+            timerText.classList.add('hidden');
+            lockIcon.innerHTML = '<i data-lucide="lock" class="text-gray-500 w-16 h-16 mb-2"></i>';
+            btnRing.className = "relative z-10 w-52 h-52 rounded-full border-[6px] border-[#2a2a30] bg-[#1a1a1e] transition-all duration-500 flex flex-col items-center justify-center shadow-2xl";
+            pingEffect.classList.add('hidden');
+            pingEffect.classList.replace('bg-green-500', 'bg-blue-500');
+            
+            currentIpDisplay.innerText = realIp;
+            currentIpDisplay.classList.replace('text-green-400', 'text-white');
+            locationText.innerText = "Не защищено";
+            ipIcon.classList.replace('text-green-500', 'text-gray-500');
+            
+            document.getElementById('stat-up').innerText = "0.0";
+            document.getElementById('stat-down').innerText = "0.0";
+            
+            lucide.createIcons();
+        }
+
+        connectBtn.onclick = () => {
+            if (isConnected) stopVpn();
+            else startVpn();
+        };
+
+        renderServers();
+    </script>
+</body>
+</html>
